@@ -28,5 +28,6 @@ data class InfoCountry(
     val Confirmed: String = "",
     val Deaths: String = "",
     val Recovered: String = "",
+    val Active: String = "",
     val Date: String = ""
 )

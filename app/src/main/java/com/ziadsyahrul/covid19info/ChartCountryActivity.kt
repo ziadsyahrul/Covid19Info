@@ -1,13 +1,39 @@
 package com.ziadsyahrul.covid19info
 
+import android.content.SharedPreferences
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import com.github.mikephil.charting.components.AxisBase
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.ziadsyahrul.covid19info.network.InfoCountry
+import com.ziadsyahrul.covid19info.network.InfoService
 import kotlinx.android.synthetic.main.activity_chart_country.*
+import okhttp3.OkHttpClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.sql.Time
+import java.text.DecimalFormat
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 
 class ChartCountryActivity : AppCompatActivity() {
 
+    private var sharedPrefFile = "kotlinsharedpreference"
+    private lateinit var sharedPreference: SharedPreferences
+    private var dayCases = ArrayList<String>()
 
-    companion object{
+    companion object {
         const val EXTRA_COUNTRY = "country"
         const val EXTRA_DATE = "date"
         const val EXTRA_COUNTRY_CODE = "country_code"
@@ -17,6 +43,9 @@ class ChartCountryActivity : AppCompatActivity() {
         const val EXTRA_TOTAL_CONFIRMED = "total_confirmed"
         const val EXTRA_TOTAL_DEATHS = "total_deaths"
         const val EXTRA_TOTAL_RECOVERED = "total_recovered"
+
+        lateinit var dataCountry: String
+        lateinit var dataFlag: String
 
     }
 
@@ -42,5 +71,98 @@ class ChartCountryActivity : AppCompatActivity() {
         txt_new_deaths_current.text = newDeath
         txt_total_recovered_current.text = totalRecovered
         txt_new_recovered_current.text = newRecovered
+
+        val formatter: NumberFormat = DecimalFormat("#,###")
+        val editor: SharedPreferences.Editor = sharedPreference.edit()
+
+    }
+
+    private fun getCountry() {
+        val okHttp = OkHttpClient().newBuilder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://api.covid19api.com/dayone/country/")
+            .client(okHttp)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val api = retrofit.create(InfoService::class.java)
+        api.getInfoService(dataCountry).enqueue(object : Callback<List<InfoCountry>> {
+            override fun onFailure(call: Call<List<InfoCountry>>, t: Throwable) {
+
+            }
+
+            override fun onResponse(call: Call<List<InfoCountry>>, response: Response<List<InfoCountry>>) {
+                if (response.isSuccessful){
+                    val dataCovid = response.body()
+                    val  barEntries1: ArrayList<BarEntry> = ArrayList()
+                    val  barEntries2: ArrayList<BarEntry> = ArrayList()
+                    val  barEntries3: ArrayList<BarEntry> = ArrayList()
+                    val  barEntries4: ArrayList<BarEntry> = ArrayList()
+                    var i = 0
+
+                    while (i < dataCovid?.size ?: 0){
+                        for (s in dataCovid!!){
+                            val barEntry1 = BarEntry(i.toFloat(), s.Confirmed.toFloat())
+                            val barEntry2 = BarEntry(i.toFloat(), s.Deaths.toFloat())
+                            val barEntry3 = BarEntry(i.toFloat(), s.Recovered.toFloat())
+                            val barEntry4 = BarEntry(i.toFloat(), s.Active.toFloat())
+
+                            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:SS'Z'")
+                            val outputFormat = SimpleDateFormat("dd-MM-yyy")
+                            val date: Date? = inputFormat.parse(s.Date)
+                            val formattedDate: String = outputFormat.format(date!!)
+                            dayCases.add(formattedDate)
+
+                            barEntries1.add(barEntry1)
+                            barEntries2.add(barEntry2)
+                            barEntries3.add(barEntry3)
+                            barEntries4.add(barEntry4)
+
+                            i++
+                        }
+                    }
+
+                    val xAxis: XAxis = chart_view.xAxis
+                    xAxis.valueFormatter = IndexAxisValueFormatter(dayCases)
+                    chart_view.axisLeft.axisMinimum = 0f
+                    xAxis.position = XAxis.XAxisPosition.BOTTOM
+                    xAxis.granularity = 1f
+                    xAxis.setCenterAxisLabels(true)
+                    xAxis.isGranularityEnabled = true
+
+
+                    val barDataSet1 = BarDataSet(barEntries1, "Confirmed")
+                    val barDataSet2 = BarDataSet(barEntries2, "Deaths")
+                    val barDataSet3 = BarDataSet(barEntries3, "Recovered")
+                    val barDataSet4 = BarDataSet(barEntries4, "Active")
+                    barDataSet1.setColor(Color.parseColor("#F44336"))
+                    barDataSet2.setColor(Color.parseColor("#FFEB3B"))
+                    barDataSet3.setColor(Color.parseColor("#03DAC5"))
+                    barDataSet4.setColor(Color.parseColor("#2196F3"))
+
+                    val data = BarData(barDataSet1, barDataSet2, barDataSet3, barDataSet4)
+                    chart_view.data = data
+
+                    val barSpace = 0.02f
+                    val groupSpace = 0.3f
+                    val groupCount = 4f
+
+                    data.barWidth = 0.15f
+                    chart_view.invalidate()
+                    chart_view.setNoDataTextColor(R.color.black)
+                    chart_view.setTouchEnabled(true)
+                    chart_view.description.isEnabled = false
+                    chart_view.xAxis.axisMinimum = 0f
+                    chart_view.setVisibleXRangeMaximum(0f + chart_view.barData.getGroupWidth(groupSpace, barSpace) * groupCount)
+                    chart_view.groupBars(0f, groupSpace, barSpace)
+
+                }
+            }
+        })
     }
 }

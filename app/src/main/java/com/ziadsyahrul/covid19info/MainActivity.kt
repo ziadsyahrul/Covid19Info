@@ -34,11 +34,31 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+
         getCountry()
         btn_sequence.setOnClickListener {
             sequenceListener(ascending) //kondisi awal A-Z
             ascending = !ascending // mengubah nilai ascending true jadi false
         }
+
+        search_view.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                countryAdapter.filter.filter(newText)
+                return false
+            }
+
+        })
+
+        swipe_refresh.setOnRefreshListener {
+            getCountry()
+            swipe_refresh.isRefreshing = false
+        }
+
+
     }
 
     private fun sequenceListener(ascending: Boolean){
@@ -88,7 +108,7 @@ class MainActivity : AppCompatActivity() {
                     rv_country.apply {
                         layoutManager = LinearLayoutManager(this@MainActivity)
                         setHasFixedSize(true)
-                        adapter = CountryAdapter(response.body()?.Countries as ArrayList<Countries>){
+                        countryAdapter = CountryAdapter(response.body()?.Countries as ArrayList<Countries>){
                             itemClicked(it)
                         }
                         adapter = countryAdapter
