@@ -1,9 +1,12 @@
 package com.ziadsyahrul.covid19info
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.Toast
+import com.bumptech.glide.Glide
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
@@ -53,6 +56,8 @@ class ChartCountryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chart_country)
 
+        sharedPreference = this.getSharedPreferences(sharedPrefFile, Context.MODE_PRIVATE)
+
         val country = intent.getStringExtra(EXTRA_COUNTRY)
         val date = intent.getStringExtra(EXTRA_DATE)
         val countryCode = intent.getStringExtra(EXTRA_COUNTRY_CODE)
@@ -63,17 +68,37 @@ class ChartCountryActivity : AppCompatActivity() {
         val totalConfirmed = intent.getStringExtra(EXTRA_NEW_CONFIRMED)
         val totalRecovered = intent.getStringExtra(EXTRA_TOTAL_RECOVERED)
 
+        val formatter: NumberFormat = DecimalFormat("#,###")
         txt_country_chart.text = country
         txt_current.text = date
-        txt_total_confirmed_current.text = totalConfirmed
-        txt_new_confirmed_current.text = newConfirmed
-        txt_total_deaths_current.text = totalDeath
-        txt_new_deaths_current.text = newDeath
-        txt_total_recovered_current.text = totalRecovered
-        txt_new_recovered_current.text = newRecovered
 
-        val formatter: NumberFormat = DecimalFormat("#,###")
+        txt_total_confirmed_current.text = formatter.format(totalConfirmed?.toDouble())
+        txt_new_confirmed_current.text = formatter.format(newConfirmed?.toDouble())
+        txt_total_deaths_current.text = formatter.format(totalDeath?.toDouble())
+        txt_new_deaths_current.text = formatter.format(newDeath?.toDouble())
+        txt_total_recovered_current.text = formatter.format(totalRecovered?.toDouble())
+        txt_new_recovered_current.text = formatter.format(newRecovered?.toDouble())
+
+
         val editor: SharedPreferences.Editor = sharedPreference.edit()
+        editor.putString(country, country)
+        editor.apply() // untuk menyiapkan data yang telah ditaruh
+        editor.commit() // untuk menerapkan shared preference
+
+        // menampung data yang telah tersimpan di dalam variable saveDataCountry
+        val saveDataCountry = sharedPreference.getString(country, country)
+        val saveCountryFlag = sharedPreference.getString(countryCode, countryCode)
+        dataCountry = saveDataCountry.toString() //buat convert data to string
+        dataFlag = saveCountryFlag.toString() + "/flat/64.png"
+
+        if (saveCountryFlag != null) {
+            Glide.with(this).load("https://www.countryflags.io/$dataFlag")
+                .into(img_flag_chart)
+        }else{
+            Toast.makeText(this, "Image not found", Toast.LENGTH_SHORT).show()
+        }
+
+        getCountry()
 
     }
 
@@ -154,7 +179,7 @@ class ChartCountryActivity : AppCompatActivity() {
 
                     data.barWidth = 0.15f
                     chart_view.invalidate()
-                    chart_view.setNoDataTextColor(R.color.black)
+                    chart_view.setNoDataTextColor(android.R.color.black)
                     chart_view.setTouchEnabled(true)
                     chart_view.description.isEnabled = false
                     chart_view.xAxis.axisMinimum = 0f
